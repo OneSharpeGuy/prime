@@ -164,7 +164,7 @@ function osg_registration_mods_form_registration_form_alter( & $form, & $form_st
 		}
 	}
 	//debug($form);
-
+	$form['#submit'][] = 'osg_registration_mods_check_user';
 	//new dBug($form);
 	//new dBug($form_state);
 }
@@ -176,7 +176,7 @@ function osg_registration_mods_form_registration_form_alter( & $form, & $form_st
 */
 function osg_registration_mods_form_alternate_markup_form()
 {
-	$form['intro'] = array('#markup'=> t('Alternate labels for registration form'),                                                                                                                                                                                                                                                                      );
+	$form['intro'] = array('#markup'=> t('Alternate labels for registration form'),                                                                                                                                                                                                                                                                                                          );
 	$form['osg_registration_mods_registration_form_title'] = array(
 		'#type'         => 'textfield',
 		'#title'        => t('State'),
@@ -204,10 +204,58 @@ function osg_registration_mods_menu()
 	$items['admin/config/singout/registration_form_labels'] = array(
 		'title'           => 'STS Singout Registration Mods: Alternate labels',
 		'page callback'   => 'drupal_get_form',
-		'page arguments'                                                           => array('osg_registration_mods_form_alternate_markup_form'),
+		'page arguments'                                                                   => array('osg_registration_mods_form_alternate_markup_form'),
 		'access arguments' => array('administer site configuration'),
 		'weight'          => 500,
 
 	);
 	return $items;
 }
+
+/**
+*
+* Implements hook_entity_update()
+*
+* Act on entities when updated.
+*
+* @param $entity
+*   The entity object.
+* @param $type
+*   The type of entity being updated (i.e. node, user, comment).
+*/
+function osg_registration_mods_check_user($form, & $form_state)
+{
+	//debug($form_state);
+	/*
+	There is an anomally that causes registration items to by written missing the user id
+	*/
+
+
+
+	/*
+	SELECT r.registration_id
+	, r.author_uid
+	FROM registration r
+	INNER JOIN osg_users u ON r.author_uid=u.uid AND is_singer AND is_singer
+	WHERE r.user_uid IS NULL
+	*/
+	
+	$query = db_select('registration','r');
+	$query->fields('r',array('registration_id','author_uid'));
+	$query->join('osg_users','u','r.author_uid=u.uid');
+	$query->condition('is_singer',TRUE);
+	$query->condition('is_member',TRUE);
+	$query->isNull('r.user_uid');
+	$result = $query->execute();
+	foreach($result as $record)
+	{
+	db_update('registration')
+	->fields(
+	array('user_uid'=> $record->author_uid			)
+	)
+	->condition('registration_id', $record->registration_id)
+	->execute();
+	}
+	
+}
+
