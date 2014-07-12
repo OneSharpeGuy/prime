@@ -1,0 +1,107 @@
+<pre/><?php
+$colors =
+array (
+  'base'     => '#eb52c1',
+  'page'     => '#ffffff',
+  'sitename' => '#feffff',
+  'slogan'   => '#fefefe',
+  'header'   => '#fdfdfd',
+  'mmenu'    => '#fffffe',
+  'link'     => '#b21f88',
+  'top'      => '#b800a5',
+  'bottom'   => '#ff6bff',
+  'ftop'     => '#181818',
+  'fbottom'  => '#343434',
+  'text'     => '#555555',
+  'blockh'   => '#eb5ac3',
+  'blockht'  => '#fffffc',
+  'blockbg'  => '#f9cbec',
+  'borders'  => '#e9e9e9',
+  'sticky'   => '#f7f7f7',
+  'rlink'    => '#aaaaaa',
+  'qtext'    => '#c8c8c8',
+  'linkbttns'=> '#c80000',
+
+);
+$fields = array (
+  'base'     => 'Base',
+  'page'     => 'Page background',
+  'sitename' => 'Site name',
+  'slogan'   => 'Slogan',
+  'header'   => 'Header text',
+  'mmenu'    => 'Main Menu links',
+  'link'     => 'Links',
+  'top'      => 'Header top',
+  'bottom'   => 'Header bottom',
+  'ftop'     => 'Footer top',
+  'fbottom'  => 'Footer bottom',
+  'text'     => 'Text',
+  'blockh'   => 'Block title bg',
+  'blockht'  => 'Block title',
+  'blockbg'  => 'Block body',
+  'borders'  => 'Borders',
+  'sticky'   => 'Sticky teaser',
+  'rlink'    => 'Rules Link',
+  'qtext'    => 'Block Quote',
+  'linkbttns'=> 'Link Buttons',
+);
+//$table = array()
+foreach ($colors as $key => $value) {
+  $row['Field Name'] = $key;
+  $row['Description'] = $fields[$key];
+  $row['Value'] = $value;
+  $table[] = $row;
+
+}
+
+
+print_r($table);
+print draw_text_table($table);
+
+function draw_text_table ($table) {
+  // Work out max lengths of each cell
+
+  foreach ($table AS $row) {
+    $cell_count = 0;
+    foreach ($row AS $key=>$cell) {
+      $cell_length = strlen($cell);
+      if (strlen($key) > $cell_length) {
+        $cell_length = strlen($key);
+      }
+      $cell_count++;
+      if (!isset($cell_lengths[$key]) || $cell_length > $cell_lengths[$key]) $cell_lengths[$key] = $cell_length;
+    }
+  }
+  // Build header bar
+  $bar    = '+';
+  $header = '|';
+  $i      = 0;
+  foreach ($cell_lengths AS $fieldname => $length) {
+    $i++;
+    $bar .= str_pad('', $length + 2, '-')."+";
+    $name = $fieldname;
+    if (strlen($name) > $length) {
+      // crop long headings
+      $name = substr($name, 0, $length - 1);
+    }
+    $header .= ' '.str_pad($name, $length, ' ', STR_PAD_RIGHT) . " |";
+  }
+  $output = '';
+  $output .= $bar."\n";
+  $output .= $header."\n";
+  $output .= $bar."\n";
+
+  // Draw rows
+  foreach ($table AS $row) {
+    $output .= "|";
+    foreach ($row AS $key=>$cell) {
+      $output .= ' '.str_pad($cell, $cell_lengths[$key], ' ', STR_PAD_RIGHT) . " |";
+    }
+    $output .= "\n";
+  }
+  $output .= $bar."\n";
+  return $output;
+
+}
+
+?>

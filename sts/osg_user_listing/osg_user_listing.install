@@ -1,0 +1,23 @@
+<?php
+/**
+* @file osg_user_listing.install
+* TODO: Enter file description here.
+*/
+
+
+/**
+* Implements hook_install().
+*/
+function osg_user_listing_install() {
+
+
+}
+
+
+/**
+* Implements hook_uninstall().
+*/
+function osg_user_listing_uninstall() {
+
+
+}

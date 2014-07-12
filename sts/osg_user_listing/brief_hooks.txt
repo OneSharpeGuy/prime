@@ -1,0 +1,22 @@
+
+/**
+ *
+ * Implements hook_menu()
+ *
+ * Define menu items and page callbacks.
+ *
+ */
+function osg_user_listing_menu() {
+
+}
+
+/**
+ *
+ * Implements hook_menu_alter()
+ *
+ * Alter the data being saved to the {menu_router} table after hook_menu is invoked.
+ *
+ */
+function osg_user_listing_menu_alter(&$items) {
+
+}

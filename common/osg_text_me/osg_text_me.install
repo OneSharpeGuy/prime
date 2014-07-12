@@ -1,0 +1,23 @@
+<?php
+/**
+* @file osg_text_me.install
+* TODO: Enter file description here.
+*/
+
+
+/**
+* Implements hook_install().
+*/
+function osg_text_me_intsall() {
+
+
+}
+
+
+/**
+* Implements hook_uninstall().
+*/
+function osg_text_me_unintsall() {
+
+
+}

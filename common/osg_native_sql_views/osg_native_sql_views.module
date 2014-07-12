@@ -1,0 +1,59 @@
+<?php
+/**
+* @file osg_native_sql_views.module
+* 
+* This Module build native SQL views
+* DO NOT add schema for these views, or DRUPAL will create an actual table.
+* 
+* @todo create my own hook to keep drupal from creating the table
+*/
+
+
+/**
+* Implements hook_menu().
+*/
+function osg_native_sql_views_menu()
+{
+    $items['osg_native_sql_views'] = array(
+        'title'           => 'Native SQL Views Page',
+        'page callback'   => 'osg_native_sql_views',
+        'access arguments' => array('access content'),
+        'type'            => MENU_SUGGESTED_ITEM,
+    );
+    return $items;
+}
+
+
+function osg_native_sql_views_define()
+{
+
+    foreach (glob(drupal_get_path('module', 'osg_native_sql_views') . "/DDL/*.sql") as $filename) {
+        //Give the View the name of the File Name
+        $parts     = explode('/',$filename);
+        $fudge= explode('.',$parts[count($parts) - 1]);
+        $base_name =$fudge[0];
+
+        $contents  = file_get_contents($filename);
+        $definer   = variable_get('osg_native_sql_views_definer',"`chasjr`@`localhost`");
+        $sql       =  $contents;
+        drupal_set_message($sql);
+        $result=db_query($sql);
+        debug($result,'$result',true);
+        drupal_set_message("Created Native SQL View $base_name");
+        
+    }
+}
+function osg_native_sql_views_drop()
+{
+
+    foreach (glob(drupal_get_path('module', 'osg_native_sql_views') . "/DDL/*.sql") as $filename) {
+        //Give the View the name of the File Name
+        $parts     = explode('/',$filename);
+        $fudge= explode('.',$parts[count($parts) - 1]);
+        $base_name =$fudge[0];
+
+        db_query("DROP VIEW `".$base_name);
+        drupal_set_message("DROPPED View $base_name");
+        
+    }
+}

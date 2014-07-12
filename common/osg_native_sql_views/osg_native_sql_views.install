@@ -1,0 +1,33 @@
+<?php
+/**
+* @file osg_native_sql_views.install
+* TODO: Enter file description here.
+*/
+
+
+/**
+* Implements hook_install().
+*/
+function osg_native_sql_views_intsall()
+{
+    osg_native_sql_views_define();
+
+}
+
+
+/**
+* Implements hook_uninstall().
+*/
+function osg_native_sql_views_unintsall()
+{
+
+    osg_native_sql_views_drop();
+}
+/**
+* Implements hook_enable().
+*/
+function osg_native_sql_views_enable()
+{
+    drupal_set_message('osg_native_sql_views_enable');
+    osg_native_sql_views_define();
+}

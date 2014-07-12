@@ -1,0 +1,6 @@
+name = Pending Member Resolution
+description = Promote Pending Member to Member or remove pending status
+package = Chuck Sharpe - Custom Mods
+core = 7.x
+
+configure = admin/config/people/prm

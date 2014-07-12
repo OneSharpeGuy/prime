@@ -1,0 +1,591 @@
+<?php
+
+/**
+* @file osg_color_fields.module
+* TODO: Enter file description here.
+***
+*
+* Implements hook_menu()
+*
+* Define menu items and page callbacks.
+*
+*/
+function osg_color_fields_menu()
+{
+	$items['osg_color_fields'] = array(
+		'title'        => 'Add adition color fields to theme',
+		'page callback'=> 'osg_color_fields',
+		'type'         => MENU_SUGGESTED_ITEM,
+	);
+	$items['admin/config/osg/color_fields'] = array(
+		'title'          => 'Modify Theme Color Fields',
+		'page callback'  => 'drupal_get_form',
+		'page arguments'            => array('osg_color_fields_form'),
+		'access callback'=> true,
+		'type'           => MENU_NORMAL_ITEM,
+	);
+	return $items;
+}
+function _init_session_globals()
+{
+	//----------------------------------------------------------
+	$theme_list = list_themes();
+	$_SESSION['osg_color_fields_form'] = array();
+	$_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_START'] =
+	"/*--Color Definition Header------------vv--------------------------------------";
+	$_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_END'] =
+	"----End Color Definition Header--------^^------------------------------------*/\n\n";
+	$theme_options = array();
+	foreach($theme_list as $theme_key => $theme){
+		$cache = array();
+
+		$theme = (array )$theme;
+		/*
+		System themes live in the drupal path. User themes live in sites/themes
+		If the filename does not start with sites/themes, do not process it
+		*/
+
+		$paths = explode("/", $theme['filename']);
+
+		if($paths[0] == 'sites'){
+			$color_info = color_get_info($theme_key);
+
+			$cache['filename'] = $theme['filename'];
+			$cache['root'] = dirname($theme['filename']);
+			$stylesheets = array();
+			$cache['stylesheets'] = array();
+
+			if(!empty($color_info)){
+
+
+				foreach($color_info['css'] as $key){
+					$filename = $cache['root'] . '/' . $key;
+					if(file_exists($filename)){
+						$cache['stylesheets'][$key] = $filename;
+					}
+				}
+				if(count($cache['stylesheets'])){
+					$_SESSION['osg_color_fields_form']['colorable_themes'][] = $theme_key;
+					$_SESSION['osg_color_fields_form'][$theme_key] = $cache;
+				}
+			}
+		}
+	}
+	//----------------------------------------------------------
+
+}
+function osg_color_fields_form($form, & $form_state)
+{
+
+	_init_session_globals();
+	_push_faux_state($form_state);
+	$faux_state    = variable_get('osg_color_fields_faux_state');
+
+	$theme_options = array_values($_SESSION['osg_color_fields_form']['colorable_themes']);
+	$theme_options = array_combine($theme_options, $theme_options);
+	//    debug($theme_options);
+	if(!empty($form_state['values']['osg_color_fields_theme'])){
+		$theme_name = $form_state['values']['osg_color_fields_theme'];
+	}
+	if(empty($theme_name)){
+		if(!empty($faux_state['form_state_values']['osg_color_fields_theme'])){
+			$theme_name = $faux_state['form_state_values']['osg_color_fields_theme'];
+		}
+	}
+	if(empty($theme_name)){
+		variable_get('osg_color_fields_theme');
+
+	}
+	if(empty($theme_name)){
+		$theme_name = current($theme_options);
+	}
+	$form['osg_color_fields_theme'] = array(
+		'#type'         => 'select',
+		'#title'        => t('Theme'),
+		'#description'  => t('Theme to be modified'),
+		'#options'      => $theme_options,
+		'#default_value'=> $theme_name,
+		'#ajax'                                                                                                    => array(
+			'callback'=> 'osg_color_fields_ajax_css',
+			'wrapper' => 'css_container',
+			'effect'  => 'fade',
+		),
+	);
+
+	$form['css'] = array(
+		'#type'  => 'container',
+		'#tree'  => true,
+		'#prefix'=> '<div id="css_container">',
+		'#suffix'=> '</div>',
+	);
+	//debug($_SESSION['osg_color_fields_form'][$theme_name]);
+	$options = array_keys($_SESSION['osg_color_fields_form'][$theme_name]['stylesheets']);
+	$options = array_combine($options, $options);
+	//    debug($options);
+	//    debug($faux_state['theme_specific_values']);
+	if(!empty($faux_state['prior_theme'])){
+		if($faux_state['prior_theme'] <> $theme_name){
+			$css_key = key($options);
+		}
+	}
+	if(empty($css_key)){
+		if(!empty($form_state['values']['css']['osg_color_fields_css_key'])){
+			$css_key = $form_state['values']['css']['osg_color_fields_css_key'];
+		}
+	}
+
+	/**
+	*   if (!empty($faux_state['theme_specific_values'][$theme_name]['osg_color_fields_css_key']))
+	*     {
+	*         $css_key = $faux_state['theme_specific_values'][$theme_name]['osg_color_fields_css_key'];
+	*     }
+	*/
+	if(empty($css_key)){
+		$css_key = key($options);
+	}
+	$form['css']['osg_color_fields_css_key'] = array(
+		'#type'         => 'select',
+		'#title'        => t('CSS File'),
+		'#description'  => t('CSS File to scan for undefined fields'),
+		'#options'      => $options,
+		'#default_value'=> $css_key,
+		'#ajax'                                                                                                    => array(
+			'callback'=> 'osg_color_fields_modify',
+			'wrapper' => 'container',
+			'effect'  => 'fade',
+		),
+	);
+
+	$extras      = _findcolors($theme_name, $css_key);
+	//    debug($_SESSION['osg_color_fields_form'][$theme_name]);
+	$field_count = count($extras['css'][$css_key]['extra_colors']);
+	$form['osg_color_fields_modify_css'] = array(
+		'#type'                    => 'button',
+		'#value'                   => t('Modify CSS'),
+		'#executes_submit_callback'=> true,
+		'#submit'                                                                                                                                                                                                       => array('osg_color_fields_modify_css'),
+		'#prefix'                  => '<br/>',
+	);
+	if($field_count){
+
+		$border = ' style="border:1px solid #c0c0c0;padding:1.5em;"';
+	}
+	else
+	{
+		$border = '';
+	}
+	$form['css']['osg_color_fields_container'] = array(
+		'#type'  => 'container',
+		'#title' => t('Extra Fields'),
+		'#tree'  => true,
+		'#prefix'=> "<div id=\"container\"$border>",
+		'#suffix'=> '</div>',
+
+	);
+
+	$saved_values = variable_get('osg_color_fields_container');
+	if($field_count){
+
+		foreach($extras['css'][$css_key]['extra_colors'] as $key => $fieldset){
+			$form['css']['osg_color_fields_container']['extra_fields'][$key] = array(
+				'#type'       => 'fieldset',
+				'#title'      => $fieldset['description'],
+				'#collapsible'=> true,
+				'#collapsed'  => false,
+				'#weight'     => $key,
+
+			);
+			$form['css']['osg_color_fields_container']['extra_fields'][$key]['define'] =
+			array(
+				'#type'         => 'checkbox',
+				'#title'        => t('Define this color'),
+				'#default_value'=> empty($saved_values['extra_fields'][$theme_name][$key]['define']) ?
+				$key : $saved_values['extra_fields'][$theme_name][$key]['define'],
+			);
+
+			$form['css']['osg_color_fields_container']['extra_fields'][$key]['field_name'] =
+			array(
+				'#type'       => 'textfield',
+				'#title'      => t('Field Name'),
+				'#size'       => 12,
+				'#maxlength'  => 20,
+				'#required'   => false,
+				'#description'=> $fieldset['zone'],
+			);
+
+		}
+		$form['#submit'][] = 'osg_color_fields_modify_colors';
+		$form['#submit'][] = _push_faux_state($form_state);
+	}
+	return system_settings_form($form);
+}
+function _osg_color_fields_match_css($needle, $haystack)
+{
+	foreach($haystack as $bundle){
+		$match = array_search($needle, array_flip($bundle));
+		if($match <> false){
+			return $match;
+		}
+	}
+}
+function osg_color_fields_modify($form, $form_state)
+{
+	_push_faux_state($form_state);
+	return $form['css']['osg_color_fields_container'];
+}
+function osg_color_fields_ajax_css($form, $form_state)
+{
+	_push_faux_state($form_state);
+	return $form['css'];
+}
+/**
+*
+* @param string $theme_name
+* @param int $return_format
+* 1 - return array map of color names
+* 2 - return array of names and colors
+*
+* @return
+*/
+function _findcolors($theme_name, $css_key = '')
+{
+	debug(array($theme_name,$css_key));
+	$bundle = array();
+	$bundle['legacy'] = array();
+	$bundle['css'] = array();
+	$haystack = list_themes();
+	if(!empty($haystack[$theme_name])){
+
+		$theme = (array )$haystack[$theme_name];
+		//Read the COLOR info file and find out the designated color stylesheets
+		$color_info = color_get_info($theme_name);
+
+		$bundle['legacy']['fields'] = $color_info['fields'];
+		$bundle['legacy']['default'] = $color_info['schemes']['default'];
+		$colors           = array_map('strtoupper', $color_info['schemes']['default']['colors']);
+		//        debug($_SESSION['osg_color_fields_form'][$theme_name]);
+		$url              = $_SESSION['osg_color_fields_form'][$theme_name]['stylesheets'][$css_key];
+		debug($url);
+
+		$shabang          = _minify_css1(file_get_contents($url));
+		$zones            = explode('}', $shabang);
+		$flat_file        = file($url); //$flatter = _crunch($flat_file);
+
+
+		$lc               = 1;
+		$collect_keywords = true;
+		$keywords = array();
+
+		$bundle['css'][$css_key]['url'] = $url;
+		$bundle['css'][$css_key]['extra_colors'] = array();
+
+		foreach(_strip_osg_color_fields_header($flat_file) as $line){
+
+			if(strpos($line, "#")){
+				$frags = explode('#', $line);
+				foreach($frags as $value){
+					$value = strtoupper(substr($value, 0, 6));
+					if(preg_match('/^[a-f0-9]{6}$/i', $value)) //hex color is valid
+					{
+						$color = '#' . $value;
+
+						if(!in_array($color, $colors)){
+							$cache = array();
+							$cache['value'] = $value;
+							$cache['description'] = $color . ' ' . basename($url) . " Line - " . $lc;
+							$cache['zone'] = $zones[osg_color_fields_searchArray($color, $zones)] . '}';
+
+							$bundle['css'][$css_key]['extra_colors'][] = $cache;
+							$colors[] = $color;
+							$_SESSION['osg_color_fields_form'][$theme_name]['undefined'][] = array(
+								'field'      => $cache['value'],
+								'description'=> $cache['description'],
+								'value'      => $color);
+						}
+					}
+				}
+			}
+			$lc = $lc + 1;
+		}
+	}
+	return $bundle;
+}
+function _minify_css1($d)
+{
+	$d = str_replace(array(
+			chr(9),
+			chr(10),
+			chr(11),
+			chr(13)), ' ', $d);
+	$d = preg_replace('`/\*.*\*/`U', ' ', $d);
+	$d = preg_replace('/[ ]+/', ' ', $d);
+	$d = str_replace('; ', ';', $d);
+	$d = str_replace('} ', '}', $d);
+	$d = str_replace('{ ', '{', $d);
+	$d = str_replace(': ', ':', $d);
+	$d = str_replace(' {', '{', $d);
+	return $d;
+}
+function _crunch($value)
+{
+	$value    = join("\n", $value);
+	$value    = _minify_css1($value);
+	$tmpfname = tempnam("public://", "osg");
+	$handle   = fopen($tmpfname, "w");
+	fwrite($handle, $value);
+	fclose($handle);
+	var_dump($tmpfname); // do here something
+
+	unlink($tmpfname);
+	return $value;
+}
+function _draw_text_table($table)
+{
+	// Work out max lengths of each cell
+	$cell_lengths = array();
+	foreach($table as $row){
+		$cell_count = 0;
+		foreach($row as $key => $cell){
+			$cell_length = strlen($cell);
+			if(strlen($key) > $cell_length){
+				$cell_length = strlen($key);
+			}
+			$cell_count++;
+			if(!isset($cell_lengths[$key]) || $cell_length > $cell_lengths[$key]){
+				$cell_lengths[$key] = $cell_length;
+			}
+		}
+	}
+	// Build header bar
+	$bar    = '+';
+	$header = '|';
+	$i      = 0;
+	foreach($cell_lengths as $fieldname => $length){
+		$i++;
+		$bar .= str_pad('', $length + 2, '-') . "+";
+		$name = $fieldname;
+		if(strlen($name) > $length){
+			// crop long headings
+			$name = substr($name, 0, $length - 1);
+		}
+		$header .= ' ' . str_pad($name, $length, ' ', STR_PAD_RIGHT) . " |";
+	}
+	$output = '';
+	$output .= $bar . "\n";
+	$output .= $header . "\n";
+	$output .= $bar . "\n";
+
+	// Draw rows
+	foreach($table as $row){
+		$output .= "|";
+		foreach($row as $key => $cell){
+			$output .= ' ' . str_pad($cell, $cell_lengths[$key], ' ', STR_PAD_RIGHT) . " |";
+		}
+		$output .= "\n";
+	}
+	$output .= $bar . "\n";
+	return $output;
+
+}
+function _push_faux_state($form_state)
+{
+	$values = variable_get('osg_color_fields_faux_state', array());
+	if(isset($values['osg_color_fields_theme'])){
+		$values['prior_theme'] = $values['osg_color_fields_theme'];
+	}
+	if(isset($form_state['values'])){
+		$values['form_state_values'] = $form_state['values'];
+	}
+	if(isset($form_state['values']['osg_color_fields_theme'])){
+		$theme_name = $form_state['values']['osg_color_fields_theme'];
+		$values['osg_color_fields_theme'] = $theme_name;
+
+		$skip[] = 'osg_color_fields_css_key';
+		$skip[] = 'osg_color_fields_modify_css';
+		$skip[] = 'osg_color_fields_container';
+		if(empty($values['theme_specific_values'])){
+			$values['theme_specific_values'] = array();
+		}
+		$values['theme_specific_values'][$theme_name] = array();
+		if(isset($form_state['values'])){
+			foreach($form_state['values'] as $key => $item){
+				if($key == 'css'){
+					foreach($item as $sub_key => $sub_item){
+						$values['theme_specific_values'][$theme_name][$sub_key] = $sub_item;
+					}
+				}
+			}
+		}
+	}
+	$values['form_state'] = $form_state;
+	variable_set('osg_color_fields_faux_state', $values);
+}
+function osg_color_fields_modify_css($form, $form_state)
+{
+	osg_color_fields_modify_colors($form, $form_state, array('modify css'=> true));
+}
+function osg_color_fields_searchArray($search, $array)
+{
+	foreach($array as $key => $value){
+		if(stristr($value, $search)){
+			return $key;
+		}
+	}
+	return false;
+}
+function osg_color_fields_modify_colors($form, $form_state, $flags = array('rebuild color.inc' => true))
+{
+
+	$theme_name = $form_state['values']['osg_color_fields_theme'];
+	$output_path= variable_get('file_public_path', conf_path() . '/files')."/osg_color_fields/$theme_name/";
+	osg_api_createPath($output_path);
+	debug(array('$theme_name'=> $theme_name,'$flags'     => $flags));
+	$color_info     = color_get_info($theme_name);
+	$defined_colors = $color_info;
+	$extras['fields'] = array();
+	$extras['colors'] = array();
+	$var = var_export($color_info, true);
+	if(isset($form_state['values']['css']['osg_color_fields_container']['extra_fields'])){
+		foreach($form_state['values']['css']['osg_color_fields_container']['extra_fields'] as
+			$key => $field_def){
+			$field_name = $_SESSION['osg_color_fields_form'][$theme_name]['undefined'][$key]['field'];
+			if(!empty($field_def[$key]['define'])){
+				if(!empty($field_def[$key]['field_name'])){
+					$field_name = $field_def[$key]['field_name'];
+				}
+			}
+			$descr = $form['css']['osg_color_fields_container']['extra_fields'][$key]['#title'];
+			$color_info['fields'][$field_name] = $descr;
+			$extras['fields'][$field_name] = $descr;
+			foreach($color_info['schemes'] as $color_theme_name => & $theme){
+				$theme['colors'][$field_name] = $_SESSION['osg_color_fields_form'][$theme_name]['undefined'][$key]['value'];
+				$extras['colors'][$field_name] = $theme['colors'][$field_name];
+			}
+		}
+	}
+	if(!empty($flags['rebuild color.inc'])){
+		// $file = $output_path . "colors.inc";
+		$handle = fopen($file, 'w+');
+		fwrite($handle, var_export($color_info, true));
+		fclose($handle);
+	}
+	if(!empty($flags['modify css'])){
+		$stylesheet = $_SESSION['osg_color_fields_form'][$theme_name]['stylesheets'][$form_state['values']['css']['osg_color_fields_css_key']];
+		debug($stylesheet);
+		$header[] = $_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_START'];
+		$header[] = 'This file is compliant with Drupal 7 color module.';
+		$header[] = '';
+		$header[] = 'The following chart lists the distinct colors used in this Color Scheme';
+		$header[] = '';
+		$header[] = '-[Defined Colors]-';
+		$comment = join("\n", $header);
+		foreach($defined_colors['schemes']['default']['colors'] as $key => $value){
+			$row['Field Name'] = $key;
+			$row['Description'] = $color_info['fields'][$key];
+			$row['Value'] = $value;
+			$table[] = $row;
+		}
+		$comment = $comment . "\n" . _draw_text_table($table) . "\n";
+
+		$offset  = count($table) + count($extras) + 29;
+		if(count($extras['colors']) > 0){
+
+			$comment = $comment . "-[Undefined Colors]-";
+			$table   = array();
+			foreach($extras['colors'] as $key => $value){
+				$row['Field Name'] = '';
+				$line = $color_info['fields'][$key];
+				// 1234567
+				$p1   = stripos($line, '-');
+				if($p1 > 0){
+					$nbr = substr($line, $p1 + 1);
+					$nbr = $nbr + $offset;
+					$line= "$line [$nbr]";
+				}
+				$row['Description'] = $line;
+				$row['Value'] = $value;
+				$table[] = $row;
+			}
+			$comment = $comment . "\n" . _draw_text_table($table) . "\n";
+			$footer[] = 'Undefined [Field Name] and [Description] fields may be directly';
+			$footer[] = 'edited, to further assist in Schema definition.';
+			$footer[] = '';
+		}
+		$footer[] = 'When modifying color scheme fields, it may also be neccessary ';
+		$footer[] = 'delete from the drupal database [variable] table';
+		$footer[] = "a row WHERE `name` = 'color_" . $theme_name . "_palette'";
+		$footer[] = '';
+		$footer[] = $_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_END'];
+
+		$comment    = $comment . join("\n", $footer);
+
+		$contents   = $comment .join("\n", _strip_osg_color_fields_header(file($stylesheet)));
+		$path_parts = pathinfo($stylesheet);
+
+		$file       = $output_path . basename($stylesheet);
+		$handle     = fopen($file, 'w+');
+		fwrite($handle, $contents);
+		fclose($handle);
+	}
+}
+
+/**
+*
+* @param undefined $lines
+*
+* @return
+*/
+function _strip_osg_color_fields_header($lines)
+{
+	$status = TRUE;
+	$newlines = array();
+	foreach($lines as $old_line){
+
+		//debug(strpos($old_line , $_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_START']));
+		if(trim($old_line ) == $_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_START']){
+			$status = "SKIP";
+
+		}
+		if(trim($old_line) == $_SESSION['osg_color_fields_form']['OSG_COLOR_DEF_HEADER_END']){
+			$status = "COPY";
+
+
+		}
+		if($status == "COPY"){
+			$newlines[] = $old_line;
+		}
+
+		if(trim($old_line) == "-[Undefined Colors]-")
+		{
+			$status = "PARSE";
+		}
+
+
+		if($status == "PARSE")
+		{
+			$fields = explode('|',$old_line);
+			if(count($fields)==5)
+			{debug($fields);
+				if(_is_color(strtolower(trim($fields[3]))))
+				{
+					debug($fields);
+
+				}
+			}
+
+		}
+
+	}
+	return $newlines;
+}
+function _is_color($value)
+{
+debug(preg_match('/^[a-f0-9]{6}$/i', $value));
+	if(preg_match('/^[a-f0-9]{6}$/i', $value)){
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+}

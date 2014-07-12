@@ -1,0 +1,5 @@
+name = Banner from folder
+description = Build Banner from folder
+dependencies[] = rotating_banner
+package = Chuck Sharpe - Custom Mods
+core = 7.x

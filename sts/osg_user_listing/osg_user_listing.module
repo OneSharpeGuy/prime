@@ -1,0 +1,25 @@
+<?php
+/**
+* @file osg_user_listing.module
+* TODO: Enter file description here.
+*/
+
+
+
+/**
+ *
+ * Implements hook_menu()
+ *
+ * Define menu items and page callbacks.
+ *
+ */
+function osg_user_listing_menu() {
+
+}
+
+$items['osg_user_listing] = array(
+'title' => 'Show View as User Page',
+'page callback' => 'osg_user_listing',
+'type' => MENU_SUGGESTED_ITEM,
+);
+}

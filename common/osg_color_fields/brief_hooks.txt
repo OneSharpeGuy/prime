@@ -1,0 +1,22 @@
+
+/**
+ *
+ * Implements hook_forms()
+ *
+ * Map form_ids to form builder functions.
+ *
+ */
+function osg_color_fields_forms($form_id, $args) {
+
+}
+
+/**
+ *
+ * Implements hook_menu()
+ *
+ * Define menu items and page callbacks.
+ *
+ */
+function osg_color_fields_menu() {
+
+}

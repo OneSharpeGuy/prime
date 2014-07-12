@@ -1,0 +1,4 @@
+name = Color Module Field Adder
+description = Add adition color fields to theme
+package = Chuck Sharpe - Custom Mods
+core = 7.x
