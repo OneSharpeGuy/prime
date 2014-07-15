@@ -284,31 +284,7 @@ function osg_singout_summary_permission()
 
 function osg_singout_summary_detail_tab($node)
 {
-	/*
-	Old Logic
-	$sql = "SELECT n.nid ";
-	$sql = $sql . ", CONCAT(f.field_firstname_value, ' ', l.field_lastname_value) AS `display_name` ";
-	$sql = $sql . ", t.name AS voice_part ";
-	$sql = $sql . ", CONCAT(g.label,' - ', g.description) AS response, u.uid ";
-	$sql = $sql . "FROM registration r ";
-	$sql = $sql . "INNER JOIN node n ON r.entity_id = n.nid ";
-	$sql = $sql . "INNER JOIN users u ON r.user_uid = u.uid ";
-	$sql = $sql . "INNER JOIN field_data_field_voice_part p ON p.entity_id = u.uid ";
-	$sql = $sql . "INNER JOIN taxonomy_term_data t ON p.field_voice_part_tid = t.tid ";
-	$sql = $sql . "INNER JOIN field_data_field_when w ON w.entity_id = n.nid ";
-	$sql = $sql . "INNER JOIN field_data_field_lastname l ON l.entity_id = u.uid ";
-	$sql = $sql . "INNER JOIN field_data_field_firstname f ON f.entity_id = u.uid ";
-	$sql = $sql . "INNER JOIN users_roles s ON s.uid=user_uid ";
-	$sql = $sql . "INNER JOIN `role` e ON s.rid=e.rid AND e.name='member' ";
-	$sql = $sql . "INNER JOIN registration_state g ON g.name=r.state ";
-
-	$sql = $sql . "WHERE n.nid=" . $node->nid . " ";
-	$sql = $sql . "ORDER BY g.weight ";
-	$sql = $sql . ",r.state ";
-	$sql = $sql . ",t.weight ";
-	$sql = $sql . ", field_lastname_value ";
-	$sql = $sql . ", field_firstname_value ";
-	*/
+	
 	//dbtng version
 	/*SELECT x.nid ,
 	u.uid ,
@@ -331,7 +307,7 @@ function osg_singout_summary_detail_tab($node)
 	$query->fields('x', array('nid','uid'));
 	$query->fields('u', array('voice_part'));
 	$query->addExpression("CONCAT(u.first_name,' ',u.last_name)", 'display_name');
-	$query->addExpression("CONCAT(s.label , ' ' , s.description)", 'response');
+	$query->addExpression("CONCAT(s.label , ' - ' , s.description)", 'response');
 	$query->orderBy('s.weight');
 	$query->orderBy('s.label');
 	$query->orderBy('t.weight');
