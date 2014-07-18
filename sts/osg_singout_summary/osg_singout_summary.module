@@ -68,7 +68,7 @@ function osg_singout_summary_menu()
         'page arguments' => array('osg_singout_summary_ereports_form', 1),
         'access callback' => 'osg_singout_summary_access_objective',
         'access arguments' => array(1, 'email reports'),
-        'weight' => 99,
+        'weight' => 8,
         'type' => MENU_LOCAL_TASK,
 
         );
