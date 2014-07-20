@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the singout feature feature.
+ */
+
+include_once 'singout_feature_export.features.inc';

@@ -1,0 +1,23 @@
+<?php
+/**
+* @file osg_members_pending.install
+* TODO: Enter file description here.
+*/
+
+
+/**
+* Implements hook_install().
+*/
+function osg_members_pending_intsall() {
+
+
+}
+
+
+/**
+* Implements hook_uninstall().
+*/
+function osg_members_pending_unintsall() {
+
+
+}
